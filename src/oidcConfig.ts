@@ -31,6 +31,23 @@ export const getOidcConfig = (): ConfigParams => {
                 },
             };
             break;
+        case 'msal':
+            options = {
+                ...options,
+                authRequired: false,
+                idpLogout: true, // raises an error (end_session_endpoint must be configured on the issuer) - need to check
+                clientID: process.env.MSAL_CLIENT_ID!,
+                issuerBaseURL: process.env.MSAL_ISSUER!,
+                clientSecret: process.env.MSAL_CLIENT_SECRET!,
+                logoutParams: {
+                    post_logout_redirect_uri: process.env.APP_BASE_URL!,
+                },
+                routes: {
+                    callback: process.env.MSAL_CALLBACK_PATH!,
+                    logout: '/logout'
+                }
+            };
+            break;
 
         default:
             throw new Error('Unsupported OIDC provider');
@@ -45,6 +62,7 @@ export const getOidcConfig = (): ConfigParams => {
         },
         afterCallback: (req, res, session) => {
             const claims = jose.decodeJwt(session.id_token);
+            console.log('token :: ');
             console.log(claims);
             return session;
         }

@@ -27,12 +27,19 @@ app.get('/login', (req, res) => {
 
 // Define a protected route
 app.get('/profile', requiresAuth(), (req, res) => {
+    console.log(' /profile');
+    res.json(req.oidc.user);
+});
+
+//http://localhost:3000/api/v1/msal/redirect
+app.get('/api/v1/msal/redirect', (req, res) => {
+    console.log(' callback :: /api/v1/msal/redirect');
     res.json(req.oidc.user);
 });
 
 // Define the home route
 app.get('/', (req, res) => {
-    res.send(req.oidc.isAuthenticated() ? `[${process.env.OIDC_PROVIDER}] Hello ${req.oidc.user?.name}` : `[${process.env.OIDC_PROVIDER}] Welcome! Please log in.`);
+    res.send(req.oidc.isAuthenticated() ? `[${process.env.OIDC_PROVIDER}] Hello ${req.oidc.user?.name} (email:${req.oidc.user?.email})` : `[${process.env.OIDC_PROVIDER}] Welcome! Please log in.`);
 });
 
 const port = process.env.PORT || 3000;
