@@ -48,6 +48,24 @@ export const getOidcConfig = (): ConfigParams => {
                 }
             };
             break;
+        case 'github':
+            options = {
+                ...options,
+                authRequired: false,
+                idpLogout: true,
+                clientID: process.env.GITHUB_CLIENT_ID!,
+                issuerBaseURL: process.env.GITHUB_ISSUER!,
+                clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+
+                authorizationParams: {
+                    response_type: 'code',
+                    scope: 'read:user user:email', // GitHub scopes you need for your application
+                },
+                routes: {
+                    callback: '/callback', // The callback route to handle GitHub's response
+                },
+            };
+            break;
 
         default:
             throw new Error('Unsupported OIDC provider');
