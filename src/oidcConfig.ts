@@ -1,70 +1,46 @@
 import { ConfigParams } from 'express-openid-connect';
 import * as jose from 'jose'
 
-export const getOidcConfig = (): ConfigParams => {
-    const provider = process.env.OIDC_PROVIDER;
-
+export const initializeOpenID = (): ConfigParams => {
+    const authProvider = process.env.AUTHENTICATION_PROVIDER;
+    console.log('authProvider :: ', authProvider)
+    const oidcProvider = authProvider?.split(':')[1]
+    console.log('oidcProvider :: ', oidcProvider)
     let options: ConfigParams = {
         authRequired: false,
+        secret: process.env.APP_SECRET!,
+        baseURL: process.env.APP_BASE_URL!,
+        clientID: process.env.CLIENT_ID!,
+        issuerBaseURL: process.env.ISSUER_BASE_URL!,
+        clientSecret: process.env.CLIENT_SECRET!,
+        idpLogout: process.env.IDP_LOGOUT === 'true',
+        authorizationParams: {
+            response_type: process.env.OPENID_RESPONSE_TYPE,
+            scope: process.env.OPENID_SCOPE!,
+        },
+        routes: {
+            login: '/oidc/login',
+            logout: '/oidc/logout',
+            postLogoutRedirect: process.env.APP_BASE_URL!,
+        }
     }
-    switch (provider) {
+    switch (oidcProvider) {
         case 'auth0':
-            options = {
-                ...options,
-                auth0Logout: true,
-                idpLogout: true,
-                clientID: process.env.AUTH0_CLIENT_ID!,
-                issuerBaseURL: `https://${process.env.AUTH0_DOMAIN}`,
-                clientSecret: process.env.AUTH0_CLIENT_SECRET!,
-            };
+            options.auth0Logout = true
             break;
         case 'google':
-            options = {
-                ...options,
-                authRequired: false,
-                idpLogout: false, // raises an error (end_session_endpoint must be configured on the issuer) - need to check
-                clientID: process.env.GOOGLE_CLIENT_ID!,
-                issuerBaseURL: process.env.GOOGLE_ISSUER!,
-                clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-                logoutParams: {
-                    post_logout_redirect_uri: process.env.APP_BASE_URL!,
-                },
-            };
+            options.logoutParams = {
+                post_logout_redirect_uri: process.env.APP_BASE_URL!,
+            }
             break;
         case 'msal':
-            options = {
-                ...options,
-                authRequired: false,
-                idpLogout: true, // raises an error (end_session_endpoint must be configured on the issuer) - need to check
-                clientID: process.env.MSAL_CLIENT_ID!,
-                issuerBaseURL: process.env.MSAL_ISSUER!,
-                clientSecret: process.env.MSAL_CLIENT_SECRET!,
-                logoutParams: {
-                    post_logout_redirect_uri: process.env.APP_BASE_URL!,
-                },
-                routes: {
-                    callback: process.env.MSAL_CALLBACK_PATH!,
-                    logout: '/logout'
-                }
-            };
-            break;
-        case 'github':
-            options = {
-                ...options,
-                authRequired: false,
-                idpLogout: true,
-                clientID: process.env.GITHUB_CLIENT_ID!,
-                issuerBaseURL: process.env.GITHUB_ISSUER!,
-                clientSecret: process.env.GITHUB_CLIENT_SECRET!,
-
-                authorizationParams: {
-                    response_type: 'code',
-                    scope: 'read:user user:email', // GitHub scopes you need for your application
-                },
-                routes: {
-                    callback: '/callback', // The callback route to handle GitHub's response
-                },
-            };
+            options.logoutParams = {
+                post_logout_redirect_uri: process.env.APP_BASE_URL!,
+            }
+            options.routes = {
+                callback: process.env.MSAL_CALLBACK_PATH!,
+                logout: '/logout'
+            }
             break;
 
         default:
@@ -72,12 +48,6 @@ export const getOidcConfig = (): ConfigParams => {
     }
     return {
         ...options,
-        secret: process.env.APP_SECRET!,
-        baseURL: process.env.APP_BASE_URL!,
-        authorizationParams: {
-            response_type: 'code',
-            scope: 'openid profile email',
-        },
         afterCallback: (req, res, session) => {
             const claims = jose.decodeJwt(session.id_token);
             console.log('token :: ');
