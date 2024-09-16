@@ -19,7 +19,7 @@ export const initializeOIDC = async (app: Express) => {
         }
     });
 
-    const openidLogin = new OpenIDStrategy(
+    const openidLogin = new OpenIDStrategy (
         {
             client,
             params: {
@@ -105,6 +105,12 @@ export const initializeOIDC = async (app: Express) => {
         }),
         oauthHandler,
     );
+
+    // Define a protected route
+    app.get('/profile', verifyToken, (req, res) => {
+        console.log('/profile :: ', req.user);
+        res.json(req.user);
+    });
 
     //http://localhost:3000/api/v1/msal/redirect
     app.get('/api/v1/msal/redirect',

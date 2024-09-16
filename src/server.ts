@@ -2,8 +2,9 @@ import express from 'express';
 import dotenv from 'dotenv';
 import session from "express-session";
 import passport from "passport";
-import {initializeOIDC, verifyToken} from "./initializeOIDC";
+import {initializeOIDC} from "./initializeOIDC";
 import cookieParser from "cookie-parser";
+import {initializeLDAP} from "./initializeLDAP";
 
 // Load environment variables from .env file
 dotenv.config();
@@ -14,7 +15,7 @@ app.use(cookieParser());
 // Configure session middleware
 app.use(
     session({
-        secret: 'LONG_RANDOM_SECRET', // Use a strong secret for signing the cookie
+        secret: process.env.EXPRESS_SESSION_SECRET!,
         resave: false,
         saveUninitialized: true,
         cookie: { secure: false, httpOnly: true },
@@ -25,14 +26,24 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
+// Middleware to parse JSON requests
+app.use(express.json());
+
 const authProvider = process.env.AUTHENTICATION_PROVIDER;
 console.log('authProvider :: ', authProvider)
-const authOptions = authProvider?.split(':')
+const authOptions: string[] = authProvider?.split(':') as string[]
 
-if (!(authOptions) || authOptions[0] === 'openid') {
-// Initialize the auth middleware with the dynamic config
+if (authOptions && authOptions[0] === 'openid') {
+    // Initialize the auth middleware with the dynamic config
     initializeOIDC(app).then(() => {
         console.log('initializeOIDC :: done');
+    }).catch(console.error);
+}
+
+if (authOptions && authOptions[0] === 'ldap') {
+    // Initialize the auth middleware with the dynamic config
+    initializeLDAP(app).then(() => {
+        console.log('initializeLDAP :: done');
     }).catch(console.error);
 }
 
@@ -46,11 +57,7 @@ passport.deserializeUser((user: any, done) => {
     done(null, user);
 });
 
-// Define a protected route
-app.get('/profile', verifyToken, (req, res) => {
-    console.log('/profile :: ', req.user);
-    res.json(req.user);
-});
+
 
 // Define the home route
 app.get('/', (req, res) => {
@@ -58,6 +65,7 @@ app.get('/', (req, res) => {
     console.log('user :: ',  req.user);
     res.send(user ? `[${process.env.AUTHENTICATION_PROVIDER}] Hello ${user?.name} (email:${user?.email})` : `[${process.env.AUTHENTICATION_PROVIDER}] Welcome! Please log in.`);
 });
+
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
